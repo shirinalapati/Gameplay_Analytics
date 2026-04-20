@@ -2,7 +2,7 @@
 
 ## Abstract
 
-This project implements a transparent analytics framework for evaluating NHL game flow from public play-by-play data. Instead of emphasizing final outcomes, the system replays completed games event-by-event and computes interpretable proxies for threat, momentum, and pressure. The output is an interactive decision-support interface that helps analysts identify when control shifted, where dangerous sequences clustered, and whether the scoreline reflected underlying process.
+This project implements a transparent analytics framework for evaluating NHL game flow from public play-by-play data from the 2025-2026 regular season. Instead of emphasizing final outcomes, the system replays completed games event-by-event and computes interpretable proxies for threat, momentum, and pressure. The output is an interactive decision-support interface that helps analysts identify when control shifted, where dangerous sequences clustered, and whether the scoreline reflected underlying process.
 
 ## 1) Problem and Motivation
 
