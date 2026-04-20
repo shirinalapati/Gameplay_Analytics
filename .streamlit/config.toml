@@ -1,0 +1,13 @@
+# High-contrast dark theme (no orange primary — avoids low contrast on dark UI)
+[theme]
+primaryColor = "#38bdf8"
+backgroundColor = "#111827"
+secondaryBackgroundColor = "#1f2937"
+textColor = "#f9fafb"
+
+[server]
+headless = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false

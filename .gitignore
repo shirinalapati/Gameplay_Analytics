@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+env/
+.env
+
+# Data (large JSON / DB — keep local)
+/data/raw/*.json
+/data/processed/*.db
+/data/processed/*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml

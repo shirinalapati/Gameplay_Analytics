@@ -1,0 +1,11 @@
+.venv
+__pycache__
+.git
+*.pyc
+.DS_Store
+data/raw/*.json
+data/processed/*.db
+ingest_full_season.log
+*.log
+.cursor
+.idea

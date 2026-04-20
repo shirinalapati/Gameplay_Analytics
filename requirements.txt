@@ -1,0 +1,8 @@
+# Game Playback Analytics — NHL 2025–2026
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+plotly>=5.18.0
+streamlit>=1.33.0
+streamlit-autorefresh>=1.0.1
+sqlalchemy>=2.0.0
