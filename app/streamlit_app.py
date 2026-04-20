@@ -50,7 +50,9 @@ from src.game_selection import (
     table_for_display,
     team_options,
 )
+from src.ingest import ingest as ingest_games
 from src.utils import EXPECTED_REGULAR_SEASON_GAME_TOTAL, format_situation, get_connection
+from src.utils import REGULAR_SEASON_END, REGULAR_SEASON_START
 from src.visuals import (
     fig_cumulative_threat,
     fig_danger_counts,
@@ -359,18 +361,53 @@ def _on_scrub_change(scrub_key: str, max_idx: int) -> None:
     st.session_state._last_step_ts = time.monotonic()
 
 
+def _render_bootstrap_controls(db_s: str, reason: str) -> None:
+    st.error(reason)
+    st.info(
+        "This deployment has no populated SQLite data yet. "
+        "Initialize a starter dataset directly from the app, then expand later."
+    )
+    c1, c2 = st.columns([2, 1])
+    limit = c1.selectbox(
+        "Starter ingest size (completed games)",
+        options=[5, 20, 50],
+        index=1,
+        key="bootstrap_limit_games",
+        help="Smaller values start faster on Streamlit Cloud.",
+    )
+    if c2.button("Initialize DB", type="primary", use_container_width=True):
+        try:
+            with st.spinner("Downloading and processing starter dataset..."):
+                ingest_games(
+                    start=REGULAR_SEASON_START,
+                    end=REGULAR_SEASON_END,
+                    db_path=Path(db_s),
+                    sleep_sec=0.2,
+                    limit_games=int(limit),
+                    skip_existing=True,
+                )
+            st.cache_data.clear()
+            st.success("Database initialized. Reloading app...")
+            st.rerun()
+        except Exception as e:
+            st.error(f"DB initialization failed: {e}")
+
+
 def main() -> None:
     db_s = str(DEFAULT_DB_PATH)
     try:
         games = _cached_games(db_s)
     except Exception as e:
-        st.error(f"Could not read database at `{db_s}`. Run ingest first.\n\n`{e}`")
+        _render_bootstrap_controls(
+            db_s,
+            f"Could not read database at `{db_s}`.\n\n`{e}`",
+        )
         return
 
     if games.empty:
-        st.error(
-            "No games in the database. Ingest 2025–26 data first:\n\n"
-            "`export PYTHONPATH=. && python -m src.ingest --limit-games 5`"
+        _render_bootstrap_controls(
+            db_s,
+            "No games found in the database yet.",
         )
         return
 
@@ -381,7 +418,7 @@ def main() -> None:
             f"A complete **2025–26** regular season is **{EXPECTED_REGULAR_SEASON_GAME_TOTAL:,}** games, "
             "and by season’s end they are all finished (**OFF** / **FINAL** in the schedule API). "
             "If your count is lower, the pipeline has not loaded every game yet — run a **full ingest** "
-            "(and use **Clear chart cache** after it finishes).\n\n"
+            "for full coverage.\n\n"
             "`export PYTHONPATH=. && python -m src.ingest`"
         )
 
