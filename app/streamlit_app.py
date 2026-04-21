@@ -360,8 +360,24 @@ def _on_scrub_change(scrub_key: str, max_idx: int) -> None:
     st.session_state._last_step_ts = time.monotonic()
 
 
-def _render_bootstrap_controls(db_s: str, reason: str) -> None:
-    st.error(reason)
+def _bootstrap_database(db_s: str, limit_games: int) -> tuple[bool, str]:
+    """Initialize starter data for first-run deployments."""
+    try:
+        ingest_games(
+            start=REGULAR_SEASON_START,
+            end=REGULAR_SEASON_END,
+            db_path=Path(db_s),
+            sleep_sec=0.2,
+            limit_games=int(limit_games),
+            skip_existing=True,
+        )
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+
+def _render_bootstrap_controls(db_s: str, reason: str, technical_error: str = "") -> None:
+    st.warning(reason)
     st.info(
         "This deployment has no populated SQLite data yet. "
         "Initialize a starter dataset directly from the app, then expand later."
@@ -375,38 +391,46 @@ def _render_bootstrap_controls(db_s: str, reason: str) -> None:
         help="Smaller values start faster on Streamlit Cloud.",
     )
     if c2.button("Initialize DB", type="primary", use_container_width=True):
-        try:
-            with st.spinner("Downloading and processing starter dataset..."):
-                ingest_games(
-                    start=REGULAR_SEASON_START,
-                    end=REGULAR_SEASON_END,
-                    db_path=Path(db_s),
-                    sleep_sec=0.2,
-                    limit_games=int(limit),
-                    skip_existing=True,
-                )
+        with st.spinner("Downloading and processing starter dataset..."):
+            ok, err = _bootstrap_database(db_s, int(limit))
+        if ok:
             st.cache_data.clear()
             st.success("Database initialized. Reloading app...")
             st.rerun()
-        except Exception as e:
-            st.error(f"DB initialization failed: {e}")
+        else:
+            st.error("DB initialization failed. Please try a smaller starter size.")
+            if err:
+                with st.expander("Technical details"):
+                    st.code(err)
+    if technical_error:
+        with st.expander("Startup technical details"):
+            st.code(technical_error)
 
 
 def main() -> None:
     db_s = str(DEFAULT_DB_PATH)
+    games = pd.DataFrame()
+    startup_error = ""
     try:
         games = _cached_games(db_s)
     except Exception as e:
-        _render_bootstrap_controls(
-            db_s,
-            f"Could not read database at `{db_s}`.\n\n`{e}`",
-        )
-        return
+        startup_error = str(e)
 
     if games.empty:
+        if not bool(st.session_state.get("_auto_bootstrap_attempted", False)):
+            st.session_state._auto_bootstrap_attempted = True
+            with st.spinner("Preparing app data for first-time use..."):
+                ok, err = _bootstrap_database(db_s, limit_games=20)
+            if ok:
+                st.cache_data.clear()
+                st.rerun()
+            startup_error = err or startup_error
+            st.warning("Automatic setup did not complete. Use manual initialization below.")
+
         _render_bootstrap_controls(
             db_s,
-            "No games found in the database yet.",
+            "This app needs initial data setup before first use.",
+            technical_error=startup_error,
         )
         return
 
