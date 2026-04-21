@@ -286,8 +286,8 @@ def _pick_game_interactive(games_raw: pd.DataFrame) -> int:
 
 def _playback_autotick(max_idx: int) -> None:
     """
-    Advance one event per autorefresh tick while playing.
-    Uses a monotonic counter from streamlit-autorefresh (full reruns), not arbitrary widget reruns.
+    Advance by timer tick deltas while playing.
+    Uses the streamlit-autorefresh counter and tolerates dropped/clustered reruns at high speed.
     """
     if not st.session_state.playing or st.session_state.event_idx >= max_idx:
         if st.session_state.event_idx >= max_idx:
@@ -295,16 +295,15 @@ def _playback_autotick(max_idx: int) -> None:
         return
 
     interval_ms = int(SPEED_TO_INTERVAL_MS.get(float(st.session_state.speed), 700))
-    # debounce=True (default): timer-driven refreshes only, not every widget rerun — avoids double-steps.
+    # debounce=True keeps refreshes timer-driven instead of reacting to every widget rerun.
     tick = st_autorefresh(interval=interval_ms, key="playback_autorefresh", debounce=True)
     prev = int(st.session_state.get("_auto_pb_last", -1))
-    now = time.monotonic()
-    last_step_ts = float(st.session_state.get("_last_step_ts", now))
-    # Guard against extra reruns: only advance when a new timer tick arrives AND enough wall time passed.
-    if tick > prev and (now - last_step_ts) >= (interval_ms / 1000.0) * 0.9:
+    if tick > prev:
+        # Step by tick delta so playback remains smooth even when reruns are delayed at high speeds.
+        step = max(1, tick - prev) if prev >= 0 else 1
         st.session_state._auto_pb_last = tick
-        st.session_state._last_step_ts = now
-        st.session_state.event_idx = min(int(st.session_state.event_idx) + 1, max_idx)
+        st.session_state._last_step_ts = time.monotonic()
+        st.session_state.event_idx = min(int(st.session_state.event_idx) + int(step), max_idx)
     if st.session_state.event_idx >= max_idx:
         st.session_state.playing = False
 
